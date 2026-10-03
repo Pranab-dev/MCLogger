@@ -23,6 +23,7 @@ It connects to a Minecraft server using [Mineflayer](https://github.com/Prismari
   * `/ping`
   * `/status`
   * `/help`
+  * `/about`
 * **Minecraft authentication**
 
   * Supports automatic LoginSecurity login through an environment variable.
@@ -82,6 +83,7 @@ Messages sent by bots are ignored to prevent unnecessary message loops.
 | `/ping`   | Check whether MC Logger is responding    |
 | `/status` | Check the Minecraft connection status    |
 | `/help`   | Display the available MC Logger commands |
+| `/about`   | Information about the bot |
 
 > **Note:** The current `/status` command is a basic status placeholder and does not yet expose the full connection state.
 
