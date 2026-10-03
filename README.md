@@ -85,8 +85,6 @@ Messages sent by bots are ignored to prevent unnecessary message loops.
 | `/help`   | Display the available MC Logger commands |
 | `/about`   | Information about the bot |
 
-> **Note:** The current `/status` command is a basic status placeholder and does not yet expose the full connection state.
-
 ## Requirements
 
 * **Node.js**
@@ -305,7 +303,7 @@ Additional monitoring and server-status functionality can be added as the projec
 
 ## Author
 
-**Pranab-dev**
+**Pranab Mukherjee**
 
 MC Logger is an independent personal project built for Minecraft and Discord integration.
 
