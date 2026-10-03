@@ -301,3 +301,13 @@ client.on("messageCreate", message => {
 // =========================
 
 client.login(process.env.DISCORD_TOKEN);
+
+module.exports = {
+    get mcConnected() {
+        return mcConnected;
+    },
+
+    get mcBot() {
+        return mcBot;
+    }
+};
