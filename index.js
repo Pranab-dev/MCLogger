@@ -64,6 +64,28 @@ async function sendToDiscord(message) {
     }
 }
 
+const AFK_INTERVAL = 10 * 60 * 1000; // 10 minutes
+const AFK_MOVE_DURATION = 5 * 1000;  // 5 seconds
+
+function startAfkMovement(bot) {
+    setInterval(() => {
+        if (!bot || !bot.entity) return;
+
+        console.log("[MC] AFK movement started.");
+
+        bot.setControlState("forward", true);
+
+        setTimeout(() => {
+            if (!bot || !bot.entity) return;
+
+            bot.setControlState("forward", false);
+
+            console.log("[MC] AFK movement stopped.");
+        }, AFK_MOVE_DURATION);
+
+    }, AFK_INTERVAL);
+}
+
 function connectMinecraft() {
     if (connecting || mcBot) return;
 
@@ -93,6 +115,8 @@ function connectMinecraft() {
 
         mcConnected = true;
         connecting = false;
+        
+        startAfkMovement(bot);
 
         setTimeout(() => {
             if (!mcBot || mcBot !== bot) return;
