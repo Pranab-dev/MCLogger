@@ -1,100 +1,91 @@
 # MC Logger
 
-**MC Logger** is a Node.js Discord bot that bridges a Minecraft server with Discord.
+**MC Logger** is a Discord ↔ Minecraft bridge bot built with **Node.js**, **discord.js**, and **Mineflayer**.
 
-It connects to a Minecraft server using [Mineflayer](https://github.com/PrismarineJS/mineflayer) and connects to Discord using [discord.js](https://discord.js.org/), allowing Minecraft activity to be shared with a designated Discord channel and Discord messages to be sent back into Minecraft.
+It connects to a Minecraft Java server, forwards Minecraft activity to Discord, sends Discord messages back into Minecraft, and keeps the Minecraft connection alive with automatic reconnection and AFK movement.
 
-## Features
+> **Current Minecraft target:** Java Edition 26.2
+> **Mineflayer build:** Complexity-ML 26.2
 
-* **Minecraft → Discord bridge**
+---
 
-  * Minecraft messages are forwarded to the configured Discord channel.
-  * Player join events are announced in Discord.
-  * Player leave events are announced in Discord.
-* **Discord → Minecraft bridge**
+## ✨ Features
 
-  * Messages sent in the configured Discord channel are sent into Minecraft.
-  * Messages are prefixed with the Discord user's name.
-* **Automatic reconnection**
+* 🔄 **Minecraft ↔ Discord message bridge**
 
-  * MC Logger periodically attempts to reconnect when the Minecraft connection ends.
-* **Discord slash commands**
+  * Minecraft chat → Discord
+  * Discord messages → Minecraft
+* 🟢 **Minecraft connection status**
+* ♻️ **Automatic Minecraft reconnection**
+* 🔐 **LoginSecurity authentication**
+* 💤 **Automatic AFK movement**
+* 👤 **Player join and leave notifications**
+* 💀 **Player death notifications**
+* 🤖 **Discord slash commands**
 
   * `/ping`
   * `/status`
   * `/help`
-  * `/about`
-* **Minecraft authentication**
+* 🔒 Environment variables for sensitive configuration
+* ☁️ Designed to run continuously on a hosting service
 
-  * Supports automatic LoginSecurity login through an environment variable.
-* **Environment-based configuration**
+---
 
-  * Sensitive credentials are stored outside the source code in `.env`.
-
-## How It Works
+## 🏗️ How It Works
 
 ```text
-                  ┌──────────────────────┐
-                  │   Minecraft Server   │
-                  └──────────┬───────────┘
-                             │
-                         Mineflayer
-                             │
-                             ▼
-                  ┌──────────────────────┐
-                  │      MC Logger       │
-                  │       Node.js        │
-                  └──────────┬───────────┘
-                             │
-                         discord.js
-                             │
-                             ▼
-                  ┌──────────────────────┐
-                  │       Discord        │
-                  │       Server         │
-                  └──────────────────────┘
+                   ┌──────────────────────┐
+                   │       Discord        │
+                   │    #minecraft        │
+                   └──────────┬───────────┘
+                              │
+                       Discord.js
+                              │
+                              ▼
+                   ┌──────────────────────┐
+                   │      MC Logger       │
+                   │      Node.js         │
+                   └──────────┬───────────┘
+                              │
+                       Mineflayer
+                              │
+                              ▼
+                   ┌──────────────────────┐
+                   │   Minecraft Java     │
+                   │       Server         │
+                   └──────────────────────┘
 ```
 
-### Minecraft → Discord
+MC Logger acts as the middle layer between the Minecraft server and Discord.
 
-Minecraft messages received by MC Logger are forwarded to the configured Discord channel.
+---
 
-Player activity is also reported:
+## 📋 Requirements
+
+### Software
+
+* Node.js 22+
+* npm
+* A Discord bot
+* A Minecraft Java Edition server
+* A Minecraft account for the bot
+
+Node.js 24 is currently used during development and hosting.
+
+### Minecraft
+
+The current project targets:
 
 ```text
-🟢 Player joined the game
-🔴 Player left the game
+Minecraft Java Edition 26.2
+Protocol: 776
 ```
 
-### Discord → Minecraft
+The project uses a **Complexity-ML build of Mineflayer** specifically for Minecraft 26.2 compatibility.
 
-Messages sent in the configured Minecraft Discord channel are forwarded to Minecraft in the following format:
+---
 
-```text
-[Discord] username: message
-```
-
-Messages sent by bots are ignored to prevent unnecessary message loops.
-
-## Discord Commands
-
-| Command   | Description                              |
-| --------- | ---------------------------------------- |
-| `/ping`   | Check whether MC Logger is responding    |
-| `/status` | Check the Minecraft connection status    |
-| `/help`   | Display the available MC Logger commands |
-| `/about`   | Information about the bot |
-
-## Requirements
-
-* **Node.js**
-* A Discord application/bot
-* A Discord server where the bot can operate
-* A Minecraft server accessible to the Mineflayer client
-* A Minecraft account/bot account accepted by the server
-* The required Discord bot permissions and intents
-
-## Installation
+## 🚀 Installation
 
 ### 1. Clone the repository
 
@@ -109,206 +100,402 @@ cd MCLogger
 npm install
 ```
 
-The project currently uses:
+### 3. Create `.env`
 
-* `discord.js`
-* `dotenv`
-* `mineflayer`
+Create a file named:
 
-### 3. Configure environment variables
+```text
+.env
+```
 
-Create a `.env` file in the project root:
+Add the required configuration:
 
 ```env
 DISCORD_TOKEN=your_discord_bot_token
-CLIENT_ID=your_discord_application_id
-GUILD_ID=your_discord_server_id
-MC_PASSWORD=your_minecraft_password
 MINECRAFT_CHANNEL_ID=your_discord_channel_id
+MC_PASSWORD=your_minecraft_loginsecurity_password
 ```
 
-**Never commit your `.env` file.**
+**Never commit `.env` to GitHub.**
 
-The repository already includes `.env` in `.gitignore`.
+---
 
-### 4. Register slash commands
+## ⚙️ Configuration
 
-Run:
+Minecraft connection settings are defined in `index.js`.
 
-```bash
-node deploy-commands.js
+The current configuration uses:
+
+```text
+Host: thenexus.aternos.me
+Port: 32552
+Username: MCLogger
+Version: 26.2
+Authentication: offline
 ```
 
-### 5. Start MC Logger
+If the Minecraft server changes, update the connection settings in `index.js`.
 
-Run:
+The LoginSecurity password should remain in `.env` rather than being written directly into the source code.
+
+---
+
+## 🤖 Discord Setup
+
+Create a Discord application and bot through the Discord Developer Portal.
+
+The bot requires the appropriate gateway intents for:
+
+* Guilds
+* Guild messages
+* Message content
+
+The bot token is provided through:
+
+```env
+DISCORD_TOKEN=...
+```
+
+The bot registers its slash commands when it starts.
+
+---
+
+## 🎮 Minecraft Setup
+
+MC Logger connects to the Minecraft server and automatically performs the LoginSecurity authentication after spawning.
+
+The expected LoginSecurity flow is:
+
+```text
+Minecraft server
+       ↓
+MC Logger joins
+       ↓
+LoginSecurity asks for authentication
+       ↓
+MC Logger sends /login
+       ↓
+Bot is authenticated
+```
+
+The Minecraft server must allow the bot to connect and use the configured LoginSecurity command.
+
+---
+
+## 💬 Discord ↔ Minecraft Bridge
+
+### Minecraft → Discord
+
+Minecraft chat messages are forwarded to the configured Discord channel.
+
+Example:
+
+```text
+Minecraft:
+Steve: hello
+
+Discord:
+Steve: hello
+```
+
+### Discord → Minecraft
+
+Messages sent in the configured Discord Minecraft channel are forwarded into Minecraft.
+
+Example:
+
+```text
+Discord:
+Alex: anyone online?
+
+Minecraft:
+[Discord] Alex: anyone online?
+```
+
+Messages generated by MC Logger itself are ignored where necessary to prevent unnecessary loops.
+
+---
+
+## 💤 AFK Movement
+
+MC Logger includes an automatic movement system to help keep the Minecraft account active.
+
+The current cycle is:
+
+```text
+Wait 10 minutes
+      ↓
+Move forward for 4 minutes
+      ↓
+Move backward for 4 minutes
+      ↓
+Stop movement
+      ↓
+Wait 10 minutes
+      ↓
+Repeat
+```
+
+The AFK system starts after the Minecraft bot successfully spawns.
+
+The movement timer is also cleaned up when the Minecraft connection ends, preventing old timers from controlling a newly connected bot.
+
+---
+
+## ♻️ Automatic Reconnection
+
+If the Minecraft connection ends unexpectedly, MC Logger automatically attempts to reconnect.
+
+The current reconnect delay is:
+
+```text
+5 seconds
+```
+
+The connection lifecycle is approximately:
+
+```text
+Minecraft connection lost
+        ↓
+Clean up AFK movement
+        ↓
+Wait 5 seconds
+        ↓
+Reconnect
+        ↓
+Login
+        ↓
+Spawn
+        ↓
+Authenticate
+        ↓
+Restart AFK system
+```
+
+This allows the bot to recover from temporary Minecraft or network disconnects without requiring a manual restart.
+
+---
+
+## 🧰 Slash Commands
+
+| Command   | Description                                 |
+| --------- | ------------------------------------------- |
+| `/ping`   | Check whether the Discord bot is responding |
+| `/status` | Check the Minecraft connection state        |
+| `/help`   | Display available MC Logger commands        |
+
+The commands are registered automatically by the bot.
+
+---
+
+## 📁 Project Structure
+
+```text
+MCLogger/
+│
+├── index.js
+├── package.json
+├── package-lock.json
+├── README.md
+├── .gitignore
+└── .env
+```
+
+### Important files
+
+**`index.js`**
+
+Contains the main Discord bot, Minecraft connection, message bridge, LoginSecurity authentication, reconnect system, AFK movement, and slash commands.
+
+**`package.json`**
+
+Contains the project's Node.js dependencies and configuration.
+
+**`.env`**
+
+Contains private credentials and configuration.
+
+**`README.md`**
+
+Project documentation.
+
+---
+
+## 🔐 Security
+
+MC Logger uses environment variables for sensitive information.
+
+Never upload:
+
+```text
+.env
+Discord bot tokens
+Minecraft passwords
+API keys
+Access tokens
+```
+
+A safe `.gitignore` should include:
+
+```gitignore
+.env
+node_modules/
+```
+
+If a Discord token or other credential is accidentally exposed, **regenerate it immediately**.
+
+---
+
+## 🖥️ Running Locally
+
+Start the bot with:
 
 ```bash
 node index.js
 ```
 
-If everything is configured correctly, the Discord bot will log in and MC Logger will begin attempting to connect to Minecraft.
-
-## Configuration
-
-The Minecraft server connection is currently configured in `index.js`.
-
-The project currently uses:
+A successful startup should show messages similar to:
 
 ```text
-Host: thenexus.aternos.me
-Port: 32552
-Minecraft username: MCLogger
+🔑 Discord token found.
+🔌 Connecting to Discord...
+🟢 Minecraft login successful!
+🟢 MC Logger spawned in Minecraft!
+🔐 Logging into LoginSecurity...
+[MC] Successfully logged in.
+🕒 AFK movement system started.
 ```
 
-The Minecraft password is loaded from:
+The exact output may vary depending on connection timing and server responses.
 
-```env
-MC_PASSWORD=your_minecraft_password
-```
+---
 
-The Discord channel used for the bridge is loaded from:
+## ☁️ Hosting
 
-```env
-MINECRAFT_CHANNEL_ID=your_discord_channel_id
-```
+MC Logger can run on a Node.js hosting service such as a compatible VPS or game-bot hosting platform.
 
-The Discord bot token is loaded from:
+For a continuously running deployment, configure the host to:
 
-```env
-DISCORD_TOKEN=your_discord_bot_token
-```
+1. Use Node.js 22 or newer.
+2. Install the repository dependencies with `npm install`.
+3. Use `index.js` as the main file.
+4. Provide the required environment variables.
+5. Keep the process running continuously.
 
-## Project Structure
+If the hosting provider automatically runs `npm install`, the provider must allow the remote dependency used by the Minecraft 26.2 Mineflayer build.
+
+---
+
+## 🛠️ Troubleshooting
+
+### `ECONNRESET`
+
+A Minecraft connection may occasionally fail with:
 
 ```text
-MCLogger/
-│
-├── commands/
-│   ├── help.js
-│   ├── ping.js
-│   └── status.js
-│
-├── deploy-commands.js
-├── index.js
-├── mc-test.js
-├── package.json
-├── package-lock.json
-├── .gitignore
-└── README.md
+write ECONNRESET
 ```
 
-### Main files
+MC Logger automatically retries the connection.
 
-**`index.js`**
+A temporary network/server-side disconnect does not necessarily indicate a problem with the bot.
 
-The main application. Handles:
+---
 
-* Discord client initialization
-* Minecraft connection
-* Minecraft → Discord messages
-* Discord → Minecraft messages
-* Player join/leave events
-* Reconnection
-* Slash-command handling
+### Discord does not become ready
 
-**`deploy-commands.js`**
+Check:
 
-Registers the Discord slash commands.
+* The Discord token is correct.
+* The token has not been revoked.
+* The bot is actually added to the server.
+* Required intents are enabled.
+* The hosting provider can reach Discord.
+* Discord is not temporarily rate-limiting the hosting server's IP.
 
-**`mc-test.js`**
+Avoid repeatedly restarting the bot when Discord is rate-limiting the connection.
 
-A standalone Mineflayer connection/testing script.
+---
 
-**`commands/`**
+### LoginSecurity authentication fails
 
-Contains the Discord slash command implementations.
+Check:
 
-## Reconnection
+* `MC_PASSWORD` is correct.
+* The server is running LoginSecurity.
+* The bot username matches the expected Minecraft account.
+* The server accepts the `/login` command.
 
-When the Minecraft connection ends, MC Logger clears the connection state and attempts to reconnect.
+---
 
-The current reconnect interval is **5 seconds**.
+### AFK movement does not start
 
-```text
-Minecraft online
-       │
-       ▼
-   Connected
-       │
-       │ connection lost
-       ▼
-   Disconnected
-       │
-       │ wait 5 seconds
-       ▼
-   Try again
-       │
-       └──────► repeat
-```
+The AFK system starts after the Minecraft `spawn` event.
 
-This allows MC Logger to work with Minecraft servers that are not continuously online.
+Check that:
 
-## Security
+1. MC Logger successfully connected.
+2. MC Logger successfully spawned.
+3. Login/authentication completed.
+4. No connection was lost before the timer started.
 
-MC Logger uses environment variables for sensitive configuration.
+---
 
-Do **not** put the following directly into committed source code:
+## 📌 Current Status
 
-* Discord bot tokens
-* Minecraft passwords
-* Other private credentials
+MC Logger currently supports:
 
-The `.gitignore` file excludes:
+* [x] Discord bot
+* [x] Minecraft Java connection
+* [x] Minecraft 26.2 support
+* [x] Minecraft → Discord chat
+* [x] Discord → Minecraft chat
+* [x] LoginSecurity authentication
+* [x] Automatic reconnection
+* [x] AFK movement
+* [x] Player join/leave events
+* [x] Player death events
+* [x] `/ping`
+* [x] `/status`
+* [x] `/help`
 
-```text
-.env
-node_modules/
-```
+The project is actively being developed.
 
-If a credential is ever accidentally exposed, revoke or change it immediately.
+---
 
-## Development
+## 🔮 Possible Future Features
 
-After modifying the project:
+Potential improvements include:
 
-```bash
-git add .
-git commit -m "Describe your changes"
-git push
-```
+* [ ] Better Minecraft event formatting
+* [ ] Rich Discord embeds
+* [ ] Server online/offline monitoring
+* [ ] Improved AFK behavior
+* [ ] More Minecraft commands
+* [ ] Discord administrative controls
+* [ ] Better error reporting
+* [ ] Persistent statistics
+* [ ] Multi-server support
+* [ ] Improved hosting/deployment configuration
 
-Install dependencies again after cloning:
+---
 
-```bash
-npm install
-```
+## 🤝 Contributing
 
-## Project Status
+Contributions, suggestions, and bug reports are welcome.
 
-**Active development**
+For larger changes, open an issue first so the proposed change can be discussed before implementation.
 
-MC Logger is currently a working Discord ↔ Minecraft bridge project.
+---
 
-The current implementation focuses on:
+## 📜 License
 
-* Discord integration
-* Minecraft connectivity
-* Message synchronization
-* Player join/leave notifications
-* Automatic reconnection
-* Basic Discord commands
+This project is currently provided under the license specified in the repository.
 
-Additional monitoring and server-status functionality can be added as the project develops.
+---
 
-## Author
+## 👤 Author
 
 **Pranab Mukherjee**
 
-MC Logger is an independent personal project built for Minecraft and Discord integration.
-
-## License
-
-This project is licensed under the **MIT License**.
-
-See [`LICENSE`](LICENSE) for the full license text.
+MC Logger is a personal Minecraft ↔ Discord integration project built for experimentation, development, and continuous improvement.
