@@ -108,79 +108,137 @@ async function sendToDiscord(message) {
 }
 
 // ==================================================
-// AFK MOVEMENT
+// SMART AFK MOVEMENT
 // ==================================================
 
+const AFK_WALK_TIME = 4 * 60 * 1000;       // 4 minutes
+const AFK_WAIT_TIME = 10 * 60 * 1000;      // 10 minutes
+const STUCK_CHECK_INTERVAL = 1000;         // Check every second
+const STUCK_TIME = 3 * 1000;               // Stuck after 3 seconds
+const TURN_ANGLE = Math.PI / 2;             // 90 degrees
+
+let afkTimer = null;
+let afkMovementTimeout = null;
+let afkStuckInterval = null;
+let afkLastPosition = null;
+let afkStillTime = 0;
+let afkDirection = "forward";
+
 function stopAfkMovement() {
-    if (afkInterval) {
-        clearInterval(afkInterval);
-        afkInterval = null;
+    if (afkTimer) {
+        clearInterval(afkTimer);
+        afkTimer = null;
     }
 
-    if (afkStopTimeout) {
-        clearTimeout(afkStopTimeout);
-        afkStopTimeout = null;
+    if (afkMovementTimeout) {
+        clearTimeout(afkMovementTimeout);
+        afkMovementTimeout = null;
+    }
+
+    if (afkStuckInterval) {
+        clearInterval(afkStuckInterval);
+        afkStuckInterval = null;
     }
 
     if (mcBot) {
-        try {
-            mcBot.setControlState("forward", false);
-            mcBot.setControlState("back", false);
-        } catch {}
+        mcBot.clearControlStates();
     }
+
+    afkLastPosition = null;
+    afkStillTime = 0;
 }
 
-function startAfkMovement(bot) {
+function turnAroundSmartly() {
+    if (!mcBot || !mcBot.entity) return;
+
+    const currentYaw = mcBot.entity.yaw;
+
+    // Turn 90 degrees.
+    const newYaw = currentYaw + TURN_ANGLE;
+
+    mcBot.clearControlStates();
+
+    mcBot.look(newYaw, mcBot.entity.pitch, true)
+        .then(() => {
+            if (!mcBot || !mcBot.entity) return;
+
+            console.log("🧠 Smart AFK: obstacle detected, turning 90°.");
+
+            mcBot.setControlState(afkDirection, true);
+        })
+        .catch(() => {});
+}
+
+function startAfkMovement() {
     stopAfkMovement();
 
-    console.log("🕒 AFK movement system started.");
+    if (!mcBot || !mcBot.entity) return;
 
-    const runMovementCycle = () => {
-        if (!mcBot || mcBot !== bot) return;
+    console.log("🕒 Smart AFK movement system started.");
 
-        console.log("🚶 AFK: moving forward for 4 minutes.");
+    afkDirection = "forward";
 
-        try {
-            bot.setControlState("back", false);
-            bot.setControlState("forward", true);
-        } catch (error) {
-            console.error("❌ Forward movement failed:", error);
-            return;
-        }
+    function startWalking() {
+        if (!mcBot || !mcBot.entity) return;
 
-        afkStopTimeout = setTimeout(() => {
-            if (!mcBot || mcBot !== bot) return;
+        mcBot.clearControlStates();
+        mcBot.setControlState(afkDirection, true);
 
-            console.log("🔙 AFK: moving backward for 4 minutes.");
+        console.log(`🚶 Smart AFK: walking ${afkDirection} for 4 minutes.`);
 
-            try {
-                bot.setControlState("forward", false);
-                bot.setControlState("back", true);
-            } catch (error) {
-                console.error("❌ Backward movement failed:", error);
+        afkLastPosition = mcBot.entity.position.clone();
+        afkStillTime = 0;
+
+        // Detect being stuck.
+        afkStuckInterval = setInterval(() => {
+            if (!mcBot || !mcBot.entity) return;
+
+            const currentPosition = mcBot.entity.position;
+
+            if (!afkLastPosition) {
+                afkLastPosition = currentPosition.clone();
                 return;
             }
 
-            afkStopTimeout = setTimeout(() => {
-                if (!mcBot || mcBot !== bot) return;
+            const distance = currentPosition.distanceTo(afkLastPosition);
 
-                try {
-                    bot.setControlState("back", false);
-                    bot.setControlState("forward", false);
-                } catch {}
+            if (distance < 0.03) {
+                afkStillTime += STUCK_CHECK_INTERVAL;
 
-                console.log("🛑 AFK movement cycle finished.");
+                if (afkStillTime >= STUCK_TIME) {
+                    console.log("🧱 Smart AFK: MC Logger is stuck!");
 
-                afkStopTimeout = null;
-            }, 4 * 60 * 1000);
+                    afkStillTime = 0;
+                    turnAroundSmartly();
+                }
+            } else {
+                afkStillTime = 0;
+            }
 
-        }, 4 * 60 * 1000);
-    };
+            afkLastPosition = currentPosition.clone();
+        }, STUCK_CHECK_INTERVAL);
 
-    afkInterval = setInterval(
-        runMovementCycle,
-        10 * 60 * 1000
-    );
+        // End this walking phase after 4 minutes.
+        afkMovementTimeout = setTimeout(() => {
+            if (!mcBot) return;
+
+            mcBot.clearControlStates();
+
+            console.log(`⏹️ Smart AFK: ${afkDirection} phase finished.`);
+
+            // Switch direction.
+            afkDirection =
+                afkDirection === "forward"
+                    ? "back"
+                    : "forward";
+
+            // Start the next phase.
+            startWalking();
+        }, AFK_WALK_TIME);
+    }
+
+    // First movement starts immediately.
+    startWalking();
 }
 
 // ==================================================
