@@ -1,5 +1,31 @@
 require("dotenv").config();
 
+const path = require("path");
+
+function showPackageVersion(pkg) {
+    try {
+        const pkgPath = require.resolve(`${pkg}/package.json`);
+        const pkgJson = require(pkgPath);
+        console.log(`📦 ${pkg}: ${pkgJson.version}`);
+    } catch (err) {
+        console.log(`⚠️ ${pkg}: unable to determine version`);
+    }
+}
+
+console.log("=================================");
+console.log("       PACKAGE VERSIONS");
+console.log("=================================");
+
+[
+    "mineflayer",
+    "prismarine-chat",
+    "minecraft-protocol",
+    "minecraft-data",
+    "prismarine-registry"
+].forEach(showPackageVersion);
+
+console.log("=================================");
+
 const {
     Client,
     GatewayIntentBits,
@@ -179,6 +205,17 @@ function connectMinecraft() {
     });
 
     mcBot = bot;
+
+// ==================================================
+// DEBUG: MINECRAFT TEAM PACKETS
+// ==================================================
+
+bot._client.on("packet", (data, meta) => {
+    if (meta.name === "team") {
+        console.log("🚨 TEAM PACKET RECEIVED:");
+        console.log(JSON.stringify(data, null, 2));
+    }
+});
 
     // ==================================================
     // LOGIN
@@ -442,7 +479,7 @@ client.on("interactionCreate", async interaction => {
 
     if (interaction.commandName === "ping") {
         await interaction.reply(
-            "🏓 Pong! MC Logger is alive."
+            "🏓 Pong!"
         );
         return;
     }
@@ -497,14 +534,43 @@ client.once("clientReady", async () => {
 // DISCORD ERRORS
 // ==================================================
 
-client.on("error", error => {
-    console.error("❌ Discord error:");
-    console.error(error);
+client.on("error", (error) => {
+    console.error("❌ DISCORD ERROR:", error);
 });
 
-client.on("shardError", error => {
-    console.error("❌ Discord shard error:");
-    console.error(error);
+client.on("warn", (info) => {
+    console.warn("⚠️ DISCORD WARNING:", info);
+});
+
+console.log("🌐 Starting Discord Gateway connection...");
+
+setTimeout(() => {
+    console.log("⏱️ 15 seconds passed.");
+    console.log("Discord ready:", client.isReady());
+    console.log("Discord status:", client.ws.status);
+}, 15000);
+
+const https = require("https");
+
+console.log("🌐 Testing Discord HTTPS...");
+
+https.get("https://discord.com/api/v10/gateway", (res) => {
+    console.log("HTTP status:", res.statusCode);
+    console.log("Retry-After:", res.headers["retry-after"]);
+    console.log("RateLimit-Remaining:", res.headers["x-ratelimit-remaining"]);
+    console.log("RateLimit-Scope:", res.headers["x-ratelimit-scope"]);
+
+    let body = "";
+
+    res.on("data", chunk => {
+        body += chunk;
+    });
+
+    res.on("end", () => {
+        console.log("Response:", body);
+    });
+}).on("error", error => {
+    console.error("❌ HTTPS error:", error);
 });
 
 // ==================================================
@@ -534,8 +600,9 @@ console.log("🔑 Discord token found.");
 console.log("🔌 Connecting to Discord...");
 
 client.login(process.env.DISCORD_TOKEN)
-    .catch(error => {
-        console.error("❌ Discord login failed:");
-        console.error(error);
-        process.exit(1);
+    .then(() => {
+        console.log("✅ client.login() completed");
+    })
+    .catch((error) => {
+        console.error("❌ LOGIN FAILED:", error);
     });
