@@ -22,7 +22,7 @@ Python Discord ↔ Minecraft bridge using `discord.py` and ProtoBot 1.2.7.
 ## Setup (Windows CMD)
 
 1. Extract the ZIP.
-2. Open CMD in the extracted `MCLogger_Python` folder.
+2. Open CMD in the extracted `MCLogger` folder.
 3. Create your environment file:
 
    ```cmd
@@ -78,7 +78,6 @@ The logger records every message/event exposed through the ProtoBot event API cu
 
 ## Notes
 
-- The old Node.js project is not modified by this rewrite.
 - The password and Discord token belong only in `.env`.
 - If the server's chat policy or plugin changes, check the console and Discord log channel for the exact error.
 - Smart AFK uses ProtoBot's physics tick loop rather than launching a second competing movement loop.
