@@ -1,0 +1,3 @@
+discord.py>=2.7,<3
+python-dotenv>=1.2,<2
+protobot @ git+https://github.com/ImWuMie/mc-proto-bot.git@71fce9b6f177f3392705f43ae51f7485bb5868d7
