@@ -23,14 +23,11 @@ if TYPE_CHECKING:
 
 log = logging.getLogger("mclogger.minecraft")
 
-# Official language file mirrors used to auto-cache all ~6,500+ vanilla keys into en_us.json
 _LANG_URLS = (
     "https://raw.githubusercontent.com/misode/mcmeta/assets-json/assets/minecraft/lang/en_us.json",
     "https://raw.githubusercontent.com/InventivetalentDev/minecraft-assets/1.21.4/assets/minecraft/lang/en_us.json",
 )
 
-# Comprehensive built-in translation table (400+ keys covering multiplayer, chat, deaths,
-# commands, advancements, disconnects, game modes, sleep, and server notices)
 MC_TRANSLATIONS: dict[str, str] = {
     # --- Multiplayer Join / Leave & Status ---
     "multiplayer.player.joined": "%s joined the game",
@@ -236,7 +233,7 @@ MC_TRANSLATIONS: dict[str, str] = {
     "death.attack.sonic_boom.item": "%1$s was obliterated by a sonically-charged shriek whilst trying to escape %2$s wielding %3$s",
     "death.attack.mace_smash": "%1$s was smashed by %2$s",
     "death.attack.mace_smash.item": "%1$s was smashed by %2$s with %3$s",
-    "death.attack.wind_charge": "%1$s wasiterated by a wind charge from %2$s",
+    "death.attack.wind_charge": "%1$s was hit by a wind charge from %2$s",
     "death.attack.wind_charge.item": "%1$s was hit by a wind charge from %2$s using %3$s",
     # --- Whispers, Messages & Team Commands ---
     "commands.message.display.incoming": "%s whispers to you: %s",
@@ -266,225 +263,27 @@ MC_TRANSLATIONS: dict[str, str] = {
     "commands.give.success.multiple": "Gave %s %s to %s targets",
     "commands.clear.success.single": "Removed %s items from player %s",
     "commands.clear.success.multiple": "Removed %s items from %s players",
-    "commands.clear.test.single": "Found %s matching items on player %s",
-    "commands.clear.test.multiple": "Found %s matching items on %s players",
     "commands.kill.success.single": "Killed %s",
     "commands.kill.success.multiple": "Killed %s entities",
     "commands.summon.success": "Summoned new %s",
-    "commands.summon.failed": "Unable to summon entity",
     "commands.effect.give.success.single": "Applied effect %s to %s",
-    "commands.effect.give.success.multiple": "Applied effect %s to %s targets",
     "commands.effect.clear.everything.success.single": "Removed every effect from %s",
-    "commands.effect.clear.everything.success.multiple": "Removed every effect from %s targets",
-    "commands.effect.clear.specific.success.single": "Removed effect %s from %s",
-    "commands.effect.clear.specific.success.multiple": "Removed effect %s from %s targets",
     "commands.enchant.success.single": "Applied enchantment %s to %s's item",
-    "commands.enchant.success.multiple": "Applied enchantment %s to %s entities",
-    "commands.experience.add.points.success.single": "Gave %s experience points to %s",
-    "commands.experience.add.points.success.multiple": "Gave %s experience points to %s players",
-    "commands.experience.add.levels.success.single": "Gave %s experience levels to %s",
-    "commands.experience.add.levels.success.multiple": "Gave %s experience levels to %s players",
-    "commands.experience.set.points.success.single": "Set %s experience points on %s",
-    "commands.experience.set.levels.success.single": "Set %s experience levels on %s",
-    "commands.experience.query.points": "%s has %s experience points",
-    "commands.experience.query.levels": "%s has %s experience levels",
     "commands.op.success": "Made %s a server operator",
-    "commands.op.failed": "Nothing changed. The player already is an operator",
     "commands.deop.success": "Made %s no longer a server operator",
-    "commands.deop.failed": "Nothing changed. The player is not an operator",
     "commands.kick.success": "Kicked %s: %s",
     "commands.ban.success": "Banned %s: %s",
-    "commands.ban.failed": "Nothing changed. The player is already banned",
-    "commands.banip.success": "Banned IP %s: %s",
-    "commands.banip.info": "This ban affects %s players: %s",
     "commands.pardon.success": "Unbanned %s",
-    "commands.pardonip.success": "Unbanned IP %s",
-    "commands.banlist.none": "There are no bans",
-    "commands.banlist.list": "There are %s bans:",
-    "commands.banlist.entry": "%s was banned by %s: %s",
     "commands.whitelist.add.success": "Added %s to the whitelist",
     "commands.whitelist.remove.success": "Removed %s from the whitelist",
-    "commands.whitelist.enabled": "Whitelist is now turned on",
-    "commands.whitelist.disabled": "Whitelist is now turned off",
-    "commands.whitelist.reloaded": "Reloaded the whitelist",
-    "commands.whitelist.none": "There are no whitelisted players",
-    "commands.whitelist.list": "There are %s whitelisted players: %s",
     "commands.gamerule.set": "Gamerule %s is now set to: %s",
     "commands.gamerule.query": "Gamerule %s is currently set to: %s",
     "commands.seed.success": "Seed: %s",
-    "commands.setworldspawn.success": "Set the world spawn point to %s, %s, %s [%s]",
-    "commands.spawnpoint.success.single": "Set %s's spawn point to %s, %s, %s [%s]",
-    "commands.spawnpoint.success.multiple": "Set spawn point to %s, %s, %s [%s] for %s players",
-    "commands.setblock.success": "Changed the block at %s, %s, %s",
-    "commands.fill.success": "Successfully filled %s blocks",
-    "commands.clone.success": "Successfully cloned %s blocks",
-    "commands.locate.structures.success": "The nearest %s is at %s (%s blocks away)",
-    "commands.locate.biomes.success": "The nearest %s is at %s (%s blocks away)",
-    "commands.worldborder.set.immediate": "Set the world border to %s blocks wide",
-    "commands.worldborder.center.success": "Set the center of the world border to %s, %s",
     "commands.save.saving": "Saving the game (this may take a moment!)",
     "commands.save.success": "Saved the game",
-    "commands.save.enabled": "Automatic saving is now enabled",
-    "commands.save.disabled": "Automatic saving is now disabled",
     "commands.stop.stopping": "Stopping the server",
     "commands.reload.success": "Reloading!",
     "commands.list.players": "There are %s of a max of %s players online: %s",
-    "commands.title.show.title.single": "Showing new title for %s",
-    "commands.title.show.subtitle.single": "Showing new subtitle for %s",
-    "commands.title.show.actionbar.single": "Showing new actionbar title for %s",
-    "commands.title.cleared.single": "Cleared titles for %s",
-    "commands.scoreboard.objectives.add.success": "Created new objective %s",
-    "commands.scoreboard.objectives.remove.success": "Removed objective %s",
-    "commands.scoreboard.players.set.success.single": "Set %s for %s to %s",
-    "commands.scoreboard.players.add.success.single": "Added %s to %s for %s (now %s)",
-    "commands.scoreboard.players.remove.success.single": "Removed %s from %s for %s (now %s)",
-    "commands.scoreboard.players.reset.all.single": "Reset all scores for %s",
-    "commands.team.add.success": "Created team %s",
-    "commands.team.remove.success": "Removed team %s",
-    "commands.team.join.success.single": "Added %s to team %s",
-    "commands.team.leave.success.single": "Removed %s from any team",
-    "commands.advancement.grant.only.to.one.success": "Granted the advancement %s to %s",
-    "commands.advancement.grant.everything.to.one.success": "Granted %s advancements to %s",
-    "commands.advancement.revoke.only.from.one.success": "Revoked the advancement %s from %s",
-    "commands.advancement.revoke.everything.from.one.success": "Revoked %s advancements from %s",
-    "commands.damage.success": "Applied %s damage to %s",
-    "commands.tick.status.running": "The game is running normally",
-    "commands.tick.rate.success": "Set the target tick rate to %s ticks per second",
-    "commands.help.failed": "Unknown command or insufficient permissions",
-    "permissions.requires.selector": "Selector not allowed",
-    "permissions.requires.entity": "An entity is required to run this command here",
-    "argument.entity.notfound.player": "No player was found",
-    "argument.entity.notfound.entity": "No entity was found",
-    "command.unknown.command": "Unknown or incomplete command, see below for error",
-    "command.unknown.argument": "Incorrect argument for command",
-    # --- Story Advancements (advancements.story.*) ---
-    "advancements.story.root.title": "Minecraft",
-    "advancements.story.mine_stone.title": "Stone Age",
-    "advancements.story.upgrade_tools.title": "Getting an Upgrade",
-    "advancements.story.smelt_iron.title": "Acquire Hardware",
-    "advancements.story.obtain_armor.title": "Suit Up",
-    "advancements.story.lava_bucket.title": "Hot Stuff",
-    "advancements.story.iron_tools.title": "Isn't It Iron Pick",
-    "advancements.story.deflect_arrow.title": "Not Today, Thank You",
-    "advancements.story.form_obsidian.title": "Ice Bucket Challenge",
-    "advancements.story.mine_diamond.title": "Diamonds!",
-    "advancements.story.enter_the_nether.title": "We Need to Go Deeper",
-    "advancements.story.shiny_gear.title": "Cover Me with Diamonds",
-    "advancements.story.enchant_item.title": "Enchanter",
-    "advancements.story.cure_zombie_villager.title": "Zombie Doctor",
-    "advancements.story.follow_ender_eye.title": "Eye Spy",
-    "advancements.story.enter_the_end.title": "The End?",
-    # --- Nether Advancements (advancements.nether.*) ---
-    "advancements.nether.root.title": "Nether",
-    "advancements.nether.return_to_sender.title": "Return to Sender",
-    "advancements.nether.find_bastion.title": "Those Were the Days",
-    "advancements.nether.obtain_ancient_debris.title": "Hidden in the Depths",
-    "advancements.nether.fast_travel.title": "Subspace Bubble",
-    "advancements.nether.find_fortress.title": "A Terrible Fortress",
-    "advancements.nether.obtain_crying_obsidian.title": "Who is Cutting Onions?",
-    "advancements.nether.distract_piglin.title": "Oh Shiny",
-    "advancements.nether.ride_strider.title": "This Boat Has Legs",
-    "advancements.nether.uneasy_alliance.title": "Uneasy Alliance",
-    "advancements.nether.loot_bastion.title": "War Pigs",
-    "advancements.nether.use_lodestone.title": "Country Lode, Take Me Home",
-    "advancements.nether.netherite_armor.title": "Cover Me in Debris",
-    "advancements.nether.get_wither_skull.title": "Spooky Scary Skeleton",
-    "advancements.nether.obtain_blaze_rod.title": "Into Fire",
-    "advancements.nether.charge_respawn_anchor.title": "Not Quite \"Nine\" Lives",
-    "advancements.nether.ride_strider_in_overworld_lava.title": "Feels Like Home",
-    "advancements.nether.explore_nether.title": "Hot Tourist Destinations",
-    "advancements.nether.summon_wither.title": "Withering Heights",
-    "advancements.nether.brew_potion.title": "Local Brewery",
-    "advancements.nether.create_beacon.title": "Bring Home the Beacon",
-    "advancements.nether.all_potions.title": "A Furious Cocktail",
-    "advancements.nether.create_full_beacon.title": "Beaconator",
-    "advancements.nether.all_effects.title": "How Did We Get Here?",
-    # --- End Advancements (advancements.end.*) ---
-    "advancements.end.root.title": "The End",
-    "advancements.end.kill_dragon.title": "Free the End",
-    "advancements.end.dragon_egg.title": "The Next Generation",
-    "advancements.end.enter_end_gateway.title": "Remote Getaway",
-    "advancements.end.respawn_dragon.title": "The End... Again...",
-    "advancements.end.dragon_breath.title": "You Need a Mint",
-    "advancements.end.find_end_city.title": "The City at the End of the Game",
-    "advancements.end.elytra.title": "Sky's the Limit",
-    "advancements.end.levitate.title": "Great View From Up Here",
-    # --- Adventure Advancements (advancements.adventure.*) ---
-    "advancements.adventure.root.title": "Adventure",
-    "advancements.adventure.voluntary_exile.title": "Voluntary Exile",
-    "advancements.adventure.spyglass_at_parrot.title": "Is It a Bird?",
-    "advancements.adventure.kill_a_mob.title": "Monster Hunter",
-    "advancements.adventure.read_power_of_chiseled_bookshelf.title": "The Power of Books",
-    "advancements.adventure.trade.title": "What a Deal!",
-    "advancements.adventure.trim_with_any_armor_pattern.title": "Crafting a New Look",
-    "advancements.adventure.honey_block_slide.title": "Sticky Situation",
-    "advancements.adventure.ol_betsy.title": "Ol' Betsy",
-    "advancements.adventure.lightning_rod_with_villager_no_fire.title": "Surge Protector",
-    "advancements.adventure.fall_from_world_height.title": "Caves & Cliffs",
-    "advancements.adventure.salvage_sherd.title": "Respecting the Remnants",
-    "advancements.adventure.avoid_vibration.title": "Sneak 100",
-    "advancements.adventure.sleep_in_bed.title": "Sweet Dreams",
-    "advancements.adventure.hero_of_the_village.title": "Hero of the Village",
-    "advancements.adventure.spyglass_at_ghast.title": "Is It a Balloon?",
-    "advancements.adventure.throw_trident.title": "A Throwaway Joke",
-    "advancements.adventure.kill_mob_near_sculk_catalyst.title": "It Spreads",
-    "advancements.adventure.shoot_arrow.title": "Take Aim",
-    "advancements.adventure.kill_all_mobs.title": "Monsters Hunted",
-    "advancements.adventure.totem_of_undying.title": "Postmortal",
-    "advancements.adventure.summon_iron_golem.title": "Hired Help",
-    "advancements.adventure.trade_at_world_height.title": "Star Trader",
-    "advancements.adventure.trim_with_all_exclusive_armor_patterns.title": "Smithing with Style",
-    "advancements.adventure.two_birds_one_arrow.title": "Two Birds, One Arrow",
-    "advancements.adventure.whos_the_pillager_now.title": "Who's the Pillager Now?",
-    "advancements.adventure.arbalistic.title": "Arbalistic",
-    "advancements.adventure.craft_decorated_pot_using_only_sherds.title": "Careful Restoration",
-    "advancements.adventure.adventuring_time.title": "Adventuring Time",
-    "advancements.adventure.play_jukebox_in_meadows.title": "Sound of Music",
-    "advancements.adventure.walk_on_powder_snow_with_leather_boots.title": "Light as a Rabbit",
-    "advancements.adventure.spyglass_at_dragon.title": "Is It a Plane?",
-    "advancements.adventure.very_very_frightening.title": "Very Very Frightening",
-    "advancements.adventure.sniper_duel.title": "Sniper Duel",
-    "advancements.adventure.bullseye.title": "Bullseye",
-    "advancements.adventure.brush_armadillo.title": "Isn't It Scute?",
-    "advancements.adventure.minecraft_trials_edition.title": "Minecraft: Trial(s) Edition",
-    "advancements.adventure.crafters_crafting_crafters.title": "Crafters Crafting Crafters",
-    "advancements.adventure.lighten_up.title": "Lighten Up",
-    "advancements.adventure.who_needs_rockets.title": "Who Needs Rockets?",
-    "advancements.adventure.under_lock_and_key.title": "Under Lock and Key",
-    "advancements.adventure.revaulting.title": "Revaulting",
-    "advancements.adventure.blowback.title": "Blowback",
-    "advancements.adventure.overoverkill.title": "Over-Overkill",
-    "advancements.adventure.heart_transplanter.title": "Heart Transplanter",
-    # --- Husbandry Advancements (advancements.husbandry.*) ---
-    "advancements.husbandry.root.title": "Husbandry",
-    "advancements.husbandry.safely_harvest_honey.title": "Bee Our Guest",
-    "advancements.husbandry.breed_an_animal.title": "The Parrots and the Bats",
-    "advancements.husbandry.allay_deliver_item_to_player.title": "You've Got a Friend in Me",
-    "advancements.husbandry.ride_a_boat_with_a_goat.title": "Whatever Floats Your Goat!",
-    "advancements.husbandry.tame_an_animal.title": "Best Friends Forever",
-    "advancements.husbandry.make_a_sign_glow.title": "Glow and Behold!",
-    "advancements.husbandry.fishy_business.title": "Fishy Business",
-    "advancements.husbandry.silk_touch_nest.title": "Total Beelocation",
-    "advancements.husbandry.tadpole_in_a_bucket.title": "Bukkit Bukkit",
-    "advancements.husbandry.plant_seed.title": "A Seedy Place",
-    "advancements.husbandry.wax_on.title": "Wax On",
-    "advancements.husbandry.bred_all_animals.title": "Two by Two",
-    "advancements.husbandry.allay_deliver_cake_to_note_block.title": "Birthday Song",
-    "advancements.husbandry.complete_catalogue.title": "A Complete Catalogue",
-    "advancements.husbandry.tactical_fishing.title": "Tactical Fishing",
-    "advancements.husbandry.leash_all_frog_variants.title": "When the Squad Hops into Town",
-    "advancements.husbandry.Obtain_netherite_hoe.title": "Serious Dedication",
-    "advancements.husbandry.obtain_netherite_hoe.title": "Serious Dedication",
-    "advancements.husbandry.wax_off.title": "Wax Off",
-    "advancements.husbandry.axolotl_in_a_bucket.title": "The Cutest Predator",
-    "advancements.husbandry.froglights.title": "With Our Powers Combined!",
-    "advancements.husbandry.plant_any_sniffer_seed.title": "Planting the Past",
-    "advancements.husbandry.kill_axolotl_target.title": "The Healing Power of Friendship!",
-    "advancements.husbandry.balanced_diet.title": "A Balanced Diet",
-    "advancements.husbandry.whole_pack.title": "The Whole Pack",
-    "advancements.husbandry.shear_armadillo.title": "Shear Brilliance",
-    "advancements.husbandry.repair_wolf_armor.title": "Good as New",
-    "advancements.husbandry.remove_wolf_armor.title": "Snip It!",
 }
 
 
@@ -625,7 +424,6 @@ def render_chat_component(component: Any) -> str:
     if component is None:
         return ""
     if isinstance(component, str):
-        # Handle JSON-encoded chat strings if the server sends serialized JSON text
         stripped = component.strip()
         if (stripped.startswith("{") and stripped.endswith("}")) or (
             stripped.startswith("[") and stripped.endswith("]")
@@ -740,7 +538,6 @@ class SmartAFKSession(BotSession):
             afk_enabled = bool(getattr(bot, "_mclogger_afk_enabled", False))
 
             if afk_enabled:
-                # 1. Pick a new human-like movement state every few seconds
                 if now >= next_state_change:
                     choice = random.random()
                     if choice < 0.25:
@@ -777,45 +574,42 @@ class SmartAFKSession(BotSession):
 
                 jump = now < jump_until
 
-                # 2. Pick new head look targets periodically
                 if now >= next_look_change:
                     cur_yaw = float(getattr(bot.player, "yaw", 0.0))
                     target_yaw = (cur_yaw + random.uniform(-110.0, 110.0)) % 360.0
                     target_pitch = random.uniform(-28.0, 32.0)
                     next_look_change = now + random.uniform(1.4, 4.8)
 
-                # Smoothly interpolate head rotation toward target_yaw / target_pitch
                 try:
-                    cur_yaw = float(getattr(bot.player, "yaw", 0.0))
-                    cur_pitch = float(getattr(bot.player, "pitch", 0.0))
-                    yaw_diff = ((target_yaw - cur_yaw + 180.0) % 360.0) - 180.0
-                    pitch_diff = target_pitch - cur_pitch
+                    if not bot.closed.is_set():
+                        cur_yaw = float(getattr(bot.player, "yaw", 0.0))
+                        cur_pitch = float(getattr(bot.player, "pitch", 0.0))
+                        yaw_diff = ((target_yaw - cur_yaw + 180.0) % 360.0) - 180.0
+                        pitch_diff = target_pitch - cur_pitch
 
-                    if abs(yaw_diff) > 1.2 or abs(pitch_diff) > 1.2:
-                        step_yaw = (
-                            cur_yaw
-                            + max(-16.0, min(16.0, yaw_diff * 0.32))
-                            + random.uniform(-0.4, 0.4)
-                        ) % 360.0
-                        step_pitch = max(
-                            -85.0,
-                            min(
-                                85.0,
-                                cur_pitch
-                                + max(-9.0, min(9.0, pitch_diff * 0.32))
-                                + random.uniform(-0.25, 0.25),
-                            ),
-                        )
-                        await bot.send_look(step_yaw, step_pitch)
+                        if abs(yaw_diff) > 1.2 or abs(pitch_diff) > 1.2:
+                            step_yaw = (
+                                cur_yaw
+                                + max(-16.0, min(16.0, yaw_diff * 0.32))
+                                + random.uniform(-0.4, 0.4)
+                            ) % 360.0
+                            step_pitch = max(
+                                -85.0,
+                                min(
+                                    85.0,
+                                    cur_pitch
+                                    + max(-9.0, min(9.0, pitch_diff * 0.32))
+                                    + random.uniform(-0.25, 0.25),
+                                ),
+                            )
+                            await bot.send_look(step_yaw, step_pitch)
                 except Exception:
                     log.debug("Smart AFK look interpolation skipped.", exc_info=True)
 
-                # 3. Occasional arm swing or hotbar check
-                if now >= next_gesture:
+                if now >= next_gesture and not bot.closed.is_set():
                     await self._maybe_player_gesture(bot)
                     next_gesture = now + random.uniform(4.5, 14.0)
 
-                # 4. Wall / corner detection inside the 5x3 bedrock prison
                 if now - last_pos_check >= 0.35:
                     cur_pos = (float(bot.player.x), float(bot.player.z))
                     dist = math.hypot(
@@ -843,17 +637,28 @@ class SmartAFKSession(BotSession):
                     last_pos = cur_pos
                     last_pos_check = now
 
-                await bot.tick(
-                    _build_movement_input(
-                        forward=forward,
-                        strafe=strafe,
-                        jump=jump,
-                        sneak=sneak,
-                        sprint=sprint,
-                    )
-                )
+                try:
+                    if not bot.closed.is_set():
+                        await bot.tick(
+                            _build_movement_input(
+                                forward=forward,
+                                strafe=strafe,
+                                jump=jump,
+                                sneak=sneak,
+                                sprint=sprint,
+                            )
+                        )
+                except Exception:
+                    if bot.closed.is_set() or self._stop.is_set():
+                        break
+                    log.debug("Tick skipped during state transition.", exc_info=True)
             else:
-                await bot.tick(_build_movement_input())
+                try:
+                    if not bot.closed.is_set():
+                        await bot.tick(_build_movement_input())
+                except Exception:
+                    if bot.closed.is_set() or self._stop.is_set():
+                        break
 
             await asyncio.sleep(self._tick_interval)
 
@@ -862,7 +667,7 @@ class SmartAFKSession(BotSession):
 
 
 class MinecraftController:
-    """Manages the Minecraft connection and Discord chat bridge."""
+    """Manages the Minecraft connection, random-world guard, and Discord chat bridge."""
 
     def __init__(
         self,
@@ -872,7 +677,6 @@ class MinecraftController:
         self.discord = discord_client
         self.config = config
 
-        # Default to 400 reconnect attempts per cycle (can be overridden in .env)
         try:
             self.max_reconnect_attempts = max(
                 1,
@@ -886,9 +690,7 @@ class MinecraftController:
         self._outgoing_messages: dict[str, float] = {}
         self._explicit_stop: bool = False
         self._watchdog_task: asyncio.Task | None = None
-
-        # Continuous attempt counter so early socket hiccups (e.g. at #174)
-        # seamlessly continue all the way to 400 without resetting prematurely.
+        self._world_guard_task: asyncio.Task | None = None
         self._continuous_attempt: int = 0
 
     def _create_session(self) -> SmartAFKSession:
@@ -931,7 +733,6 @@ class MinecraftController:
         return session
 
     async def start(self) -> None:
-        # Load or auto-download full en_us.json in a background thread on startup
         await asyncio.to_thread(_load_or_fetch_en_us_translations)
 
         self._explicit_stop = False
@@ -949,12 +750,43 @@ class MinecraftController:
             self.max_reconnect_attempts,
         )
 
+    async def _disconnect_foreign_world(self, bot, aternos_status: str) -> None:
+        """Force-close a connection that landed on a random shared-port Aternos world."""
+        log.warning(
+            "Connected to port %s while our Aternos server '%s' is '%s' (foreign/random world)! Disconnecting.",
+            self.config.mc_port,
+            self.config.mc_host,
+            aternos_status,
+        )
+        await self.discord.log_to_discord(
+            f"🛡️ **Random-World Guard:** Port `{self.config.mc_port}` answered, but "
+            f"**{self.config.mc_host}** is currently **{aternos_status}** on Aternos. "
+            f"Disconnected from the foreign world and waiting for your server."
+        )
+        try:
+            for close_attr in ("close", "disconnect"):
+                fn = getattr(bot, close_attr, None)
+                if callable(fn):
+                    res = fn()
+                    if inspect.isawaitable(res):
+                        await res
+                    break
+            bot.closed.set()
+        except Exception:
+            log.debug("Error closing foreign bot connection.", exc_info=True)
+
+    async def _periodic_world_guard(self, bot) -> None:
+        """Every 60s while connected, ensure our Aternos server is still the one online."""
+        while not bot.closed.is_set() and not self._explicit_stop:
+            await asyncio.sleep(60.0)
+            if bot.closed.is_set() or self._explicit_stop:
+                break
+            is_ours, status_str, _ = await self.discord.aternos.is_our_server_online()
+            if not is_ours:
+                await self._disconnect_foreign_world(bot, status_str)
+                break
+
     async def _ensure_forever_loop(self) -> None:
-        """
-        Guarantees the bot reaches the full 400-attempt cycle even if the underlying
-        socket loop drops early (e.g. at 174 tries), and starts a fresh 400-attempt
-        cycle if the server is still offline after 400 attempts.
-        """
         while not self._explicit_stop:
             await asyncio.sleep(max(5.0, float(self.config.reconnect_delay)))
             if self._explicit_stop:
@@ -985,6 +817,8 @@ class MinecraftController:
         self._explicit_stop = True
         if self._watchdog_task is not None and not self._watchdog_task.done():
             self._watchdog_task.cancel()
+        if self._world_guard_task is not None and not self._world_guard_task.done():
+            self._world_guard_task.cancel()
         if self.session is not None:
             self.session.request_stop()
 
@@ -1004,8 +838,13 @@ class MinecraftController:
         )
 
     async def _on_session_ready(self, bot) -> None:
-        # Reset attempt counter once successfully connected
+        is_ours, aternos_status, _ = await self.discord.aternos.is_our_server_online()
+        if not is_ours:
+            await self._disconnect_foreign_world(bot, aternos_status)
+            return
+
         self._continuous_attempt = 0
+        self.discord.aternos.known_banned = False
 
         log.info("Minecraft connected as %s.", bot.username)
 
@@ -1020,6 +859,10 @@ class MinecraftController:
 
         bot.on("error", self._on_bot_error)
         bot.on("close", self._on_bot_close)
+
+        if self._world_guard_task is not None and not self._world_guard_task.done():
+            self._world_guard_task.cancel()
+        self._world_guard_task = asyncio.create_task(self._periodic_world_guard(bot))
 
         world_event = getattr(bot, "world_ready", None)
 
@@ -1043,6 +886,11 @@ class MinecraftController:
             return
 
         try:
+            is_ours, aternos_status, _ = await self.discord.aternos.is_our_server_online()
+            if not is_ours:
+                await self._disconnect_foreign_world(bot, aternos_status)
+                return
+
             command = f"/login {self.config.mc_password}"
 
             await bot.send_command(command)
@@ -1079,6 +927,10 @@ class MinecraftController:
         target_name,
     ) -> None:
         """Forward incoming player chat to the normal Minecraft channel."""
+        session = self.session
+        bot = session.bot if session is not None else None
+        if bot is not None and not getattr(bot, "_mclogger_afk_enabled", False):
+            return
 
         player_name = render_chat_component(name).strip() or "Unknown"
         text = render_chat_component(message).strip()
@@ -1113,8 +965,12 @@ class MinecraftController:
         overlay,
     ) -> None:
         """Forward server-sent chat components."""
-
         if overlay:
+            return
+
+        session = self.session
+        bot = session.bot if session is not None else None
+        if bot is not None and not getattr(bot, "_mclogger_afk_enabled", False):
             return
 
         text = render_chat_component(component).strip()
@@ -1136,7 +992,11 @@ class MinecraftController:
         session = self.session
         bot = session.bot if session is not None else None
 
-        if bot is None or bot.closed.is_set():
+        if (
+            bot is None
+            or bot.closed.is_set()
+            or not getattr(bot, "_mclogger_afk_enabled", False)
+        ):
             return False
 
         outgoing = f"[Discord] {author}: {content}"
@@ -1188,6 +1048,9 @@ class MinecraftController:
         current = max(attempt, self._continuous_attempt, 1)
         reason_text = str(reason or "connection closed")
 
+        if "ban" in reason_text.casefold():
+            self.discord.aternos.known_banned = True
+
         log.warning(
             "Minecraft disconnected (attempt #%d/%d): %s",
             current,
@@ -1221,14 +1084,14 @@ class MinecraftController:
 
         if bot is not None and not bot.closed.is_set():
             return (
-                f"Connected as **{bot.username}** "
+                f"🟢 Connected as **{bot.username}** "
                 "(offline-mode)"
             )
 
         if self.session.running or not self._explicit_stop:
             return (
-                f"Connecting / waiting to reconnect "
+                f"🟡 Connecting / waiting to reconnect "
                 f"(attempt #{self._continuous_attempt}/{self.max_reconnect_attempts})"
             )
 
-        return "Offline"
+        return "🔴 Offline"
