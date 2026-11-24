@@ -46,10 +46,12 @@ _SERVER_ID_RE = re.compile(
     re.IGNORECASE,
 )
 _ANY_SERVER_ID_RE = re.compile(r'data-id=["\']([a-zA-Z0-9]{12,20})["\']')
-_BANNED_PLAYER_RE = re.compile(
-    r'class=["\'][^"\']*list-name[^"\']*["\'][^>]*>\s*([^<\n\r]+?)\s*<',
+_BANNED_PLAYER_DIV_RE = re.compile(
+    r'class=["\'][^"\']*list-name[^"\']*["\'][^>]*>([\s\S]*?)</div>',
     re.IGNORECASE,
 )
+_DATA_NAME_RE = re.compile(r'data-name=["\']([^"\']+)["\']', re.IGNORECASE)
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
 
 
 class AternosManager:
@@ -330,11 +332,16 @@ class AternosManager:
 
     def _fetch_banned_players_sync(self, scraper: Any) -> list[str]:
         resp = scraper.get(f"{_BASE_URL}/players/banned-players", timeout=15)
-        return [
-            name.strip()
-            for name in _BANNED_PLAYER_RE.findall(resp.text)
-            if name.strip()
-        ]
+        names: list[str] = []
+        for raw_inner in _BANNED_PLAYER_DIV_RE.findall(resp.text):
+            cleaned = _HTML_TAG_RE.sub("", raw_inner).strip()
+            if cleaned:
+                names.append(cleaned)
+        for data_name in _DATA_NAME_RE.findall(resp.text):
+            cleaned = data_name.strip()
+            if cleaned and cleaned not in names:
+                names.append(cleaned)
+        return names
 
     async def is_our_server_online(self) -> tuple[bool, str, int | None]:
         """Verify whether OUR configured Aternos server is genuinely online right now."""
@@ -509,12 +516,15 @@ class AternosManager:
                     )
 
                 name_to_remove = matched_entry or target_username
-                self._ajax_request(
+                resp = self._ajax_request(
                     scraper,
                     "/panel/ajax/players/remove.php",
                     method="POST",
                     data={"list": "ban", "name": name_to_remove},
                 )
+                if resp.status_code >= 400:
+                    raise RuntimeError(f"Aternos returned HTTP {resp.status_code}")
+
                 self.known_banned = False
 
                 return (
