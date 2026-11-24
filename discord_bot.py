@@ -15,7 +15,7 @@ from minecraft import MinecraftController
 
 log = logging.getLogger("mclogger.discord")
 
-BOT_ACTIVITY_NAME = "Playing Nexus SMP!"
+BOT_ACTIVITY_NAME = "Nexus SMP!"
 
 
 class MCLoggerDiscord(commands.Bot):
@@ -46,20 +46,6 @@ class MCLoggerDiscord(commands.Bot):
             )
         except Exception:
             log.debug("Could not update Discord presence.", exc_info=True)
-
-    def _is_eligible_admin(self, interaction: discord.Interaction) -> bool:
-        """Return True if the user is in ADMIN_USER_IDS, is Server Owner, or has Administrator perms."""
-        user = interaction.user
-        if user.id in self.config.admin_user_ids:
-            return True
-
-        if interaction.guild is not None:
-            if interaction.guild.owner_id == user.id:
-                return True
-            if isinstance(user, discord.Member) and user.guild_permissions.administrator:
-                return True
-
-        return False
 
     def _has_panel_config(self) -> bool:
         key = self.config.panel_api_key
@@ -214,10 +200,10 @@ class MCLoggerDiscord(commands.Bot):
                 )
 
         async def restart_command(interaction: discord.Interaction):
-            if not self._is_eligible_admin(interaction):
+            if interaction.guild is None:
                 await self._safe_send(
                     interaction,
-                    "⛔ Only the server owner or eligible administrators can restart the MCLogger backend.",
+                    "⛔ `/restart` can only be used inside the Discord server.",
                     ephemeral=True,
                 )
                 return
@@ -255,7 +241,7 @@ class MCLoggerDiscord(commands.Bot):
                 "`/status` — Check Discord, Minecraft, Aternos server, and Ban status.\n"
                 "`/start` — Start the Aternos server.\n"
                 "`/unban` — Unban MCLogger on Aternos if it is currently banned.\n"
-                "`/restart` — Restart the MCLogger backend (Owner / Admin only).\n"
+                "`/restart` — Restart the MCLogger backend.\n"
                 "`/about` — View information about MCLogger, its developer, and GitHub repo.\n"
                 "`/help` — Show this command list.\n\n"
                 "Send a message in the configured Minecraft channel "
@@ -298,7 +284,7 @@ class MCLoggerDiscord(commands.Bot):
         self.tree.add_command(
             app_commands.Command(
                 name="restart",
-                description="Restart the MCLogger backend (Owner / Admin only).",
+                description="Restart the MCLogger backend.",
                 callback=restart_command,
             )
         )
