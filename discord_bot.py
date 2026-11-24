@@ -15,7 +15,7 @@ from minecraft import MinecraftController
 
 log = logging.getLogger("mclogger.discord")
 
-BOT_ACTIVITY_NAME = "Playing Nexus SMP!"
+BOT_ACTIVITY_NAME = "Nexus SMP!"
 
 
 class MCLoggerDiscord(commands.Bot):
@@ -98,37 +98,99 @@ class MCLoggerDiscord(commands.Bot):
         except Exception as exc:
             return False, str(exc)
 
+    async def _safe_defer(
+        self,
+        interaction: discord.Interaction,
+        ephemeral: bool = False,
+    ) -> bool:
+        """
+        Safely defer an interaction. If Discord's 3-second window expired due to
+        container CPU lag during chunk parsing, return False so the command still
+        runs and posts its reply to the channel instead of crashing.
+        """
+        try:
+            await interaction.response.defer(ephemeral=ephemeral)
+            return True
+        except discord.NotFound:
+            cmd_name = interaction.command.name if interaction.command else "unknown"
+            log.warning(
+                "Interaction for /%s expired before defer; falling back to channel reply.",
+                cmd_name,
+            )
+            return False
+        except discord.InteractionResponded:
+            return True
+
+    async def _safe_send(
+        self,
+        interaction: discord.Interaction,
+        content: str,
+        *,
+        ephemeral: bool = False,
+        deferred: bool = False,
+    ) -> None:
+        """Send a slash command response with automatic channel fallback on expired tokens."""
+        try:
+            if deferred:
+                await interaction.followup.send(content, ephemeral=ephemeral)
+                return
+            if not interaction.response.is_done():
+                await interaction.response.send_message(content, ephemeral=ephemeral)
+                return
+        except (discord.NotFound, discord.HTTPException):
+            pass
+
+        if interaction.channel is not None and isinstance(
+            interaction.channel,
+            (discord.TextChannel, discord.Thread),
+        ):
+            try:
+                await interaction.channel.send(
+                    f"{interaction.user.mention} {content}",
+                    allowed_mentions=discord.AllowedMentions(users=True),
+                )
+            except discord.HTTPException:
+                log.exception("Could not send fallback command response to channel.")
+
     async def setup_hook(self) -> None:
         # -----------------------------------------------------
         # Slash commands
         # -----------------------------------------------------
 
         async def ping(interaction: discord.Interaction):
-            await interaction.response.send_message(
+            await self._safe_send(
+                interaction,
                 "🏓 Pong!",
                 ephemeral=True,
             )
 
         async def status(interaction: discord.Interaction):
-            await interaction.response.defer(ephemeral=True)
+            deferred = await self._safe_defer(interaction, ephemeral=True)
 
             mc_status = self.minecraft.status_text()
             aternos_status, ban_status = await self.aternos.get_status_report()
 
-            await interaction.followup.send(
+            await self._safe_send(
+                interaction,
                 f"**MC Logger Status**\n"
                 f"Discord: 🟢 Online\n"
                 f"Minecraft Bot: {mc_status}\n"
                 f"Aternos Server: {aternos_status}\n"
                 f"Ban Status: {ban_status}",
                 ephemeral=True,
+                deferred=deferred,
             )
 
         async def start_command(interaction: discord.Interaction):
-            await interaction.response.defer(ephemeral=False)
+            deferred = await self._safe_defer(interaction, ephemeral=False)
 
             ok, message = await self.aternos.start_server()
-            await interaction.followup.send(message)
+            await self._safe_send(
+                interaction,
+                message,
+                ephemeral=False,
+                deferred=deferred,
+            )
 
             if ok:
                 await self.log_to_discord(
@@ -136,10 +198,15 @@ class MCLoggerDiscord(commands.Bot):
                 )
 
         async def unban_command(interaction: discord.Interaction):
-            await interaction.response.defer(ephemeral=False)
+            deferred = await self._safe_defer(interaction, ephemeral=False)
 
             ok, message = await self.aternos.unban_mclogger()
-            await interaction.followup.send(message)
+            await self._safe_send(
+                interaction,
+                message,
+                ephemeral=False,
+                deferred=deferred,
+            )
 
             if ok:
                 await self.log_to_discord(
@@ -148,13 +215,15 @@ class MCLoggerDiscord(commands.Bot):
 
         async def restart_command(interaction: discord.Interaction):
             if not self._is_eligible_admin(interaction):
-                await interaction.response.send_message(
+                await self._safe_send(
+                    interaction,
                     "⛔ Only the server owner or eligible administrators can restart the MCLogger backend.",
                     ephemeral=True,
                 )
                 return
 
-            await interaction.response.send_message(
+            await self._safe_send(
+                interaction,
                 "🔄 Restarting MCLogger backend now...",
                 ephemeral=False,
             )
@@ -166,7 +235,8 @@ class MCLoggerDiscord(commands.Bot):
             asyncio.create_task(self._restart_backend())
 
         async def about_command(interaction: discord.Interaction):
-            await interaction.response.send_message(
+            await self._safe_send(
+                interaction,
                 "**🤖 About MCLogger**\n"
                 "MCLogger is a 24/7 Minecraft-to-Discord bridge and automated server companion. "
                 "It relays live in-game chat, join/leave logs, advancements, deaths, and admin notices "
@@ -178,7 +248,8 @@ class MCLoggerDiscord(commands.Bot):
             )
 
         async def help_command(interaction: discord.Interaction):
-            await interaction.response.send_message(
+            await self._safe_send(
+                interaction,
                 "**MC Logger commands**\n"
                 "`/ping` — Check Discord bot response.\n"
                 "`/status` — Check Discord, Minecraft, Aternos server, and Ban status.\n"
