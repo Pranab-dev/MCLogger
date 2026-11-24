@@ -15,7 +15,7 @@ from minecraft import MinecraftController
 
 log = logging.getLogger("mclogger.discord")
 
-BOT_ACTIVITY_NAME = "Nexus SMP!"
+BOT_ACTIVITY_NAME = "Playing Nexus SMP!"
 
 
 class MCLoggerDiscord(commands.Bot):
