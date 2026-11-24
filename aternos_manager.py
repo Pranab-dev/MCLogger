@@ -519,4 +519,12 @@ class AternosManager:
 
                 return (
                     True,
-                    f"✅ Unbanned **{name_to_remove}** on Ate
+                    f"✅ Unbanned **{name_to_remove}** on Aternos "
+                    f"(server status: **{label}**).",
+                )
+
+            try:
+                return await asyncio.to_thread(self._run_with_refresh, _op)
+            except Exception as exc:
+                log.exception("Aternos /unban failed.")
+                return False, f"⚠️ Failed to unban **{target_username}**: `{exc}`"
