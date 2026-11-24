@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import sys
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
@@ -34,6 +35,7 @@ def main() -> None:
 
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.INFO)
+    root_logger.handlers.clear()
     root_logger.addHandler(console_handler)
     root_logger.addHandler(file_handler)
 
@@ -48,7 +50,15 @@ def main() -> None:
     try:
         client.run(config.discord_token, log_handler=None)
     except KeyboardInterrupt:
-        pass
+        return
+
+    # If /restart was triggered in Discord, re-exec the Python process in-place
+    # without exiting the container so Silly Development stays running.
+    if getattr(client, "restart_requested", False):
+        logging.getLogger("mclogger").info(
+            "Restarting MCLogger backend process in-place..."
+        )
+        os.execv(sys.executable, [sys.executable, *sys.argv])
 
 
 if __name__ == "__main__":
