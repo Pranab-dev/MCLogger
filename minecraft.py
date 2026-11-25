@@ -514,6 +514,19 @@ class SmartAFKSession(BotSession):
     async def _tick_loop(self, bot) -> None:
         log.info("Minecraft human-like Smart AFK tick loop started.")
 
+        # Wait until world chunks are loaded before sending movement/physics ticks
+        world_event = getattr(bot, "world_ready", None)
+        while (
+            world_event is not None
+            and not world_event.is_set()
+            and not bot.closed.is_set()
+            and not self._stop.is_set()
+        ):
+            await asyncio.sleep(0.1)
+
+        if bot.closed.is_set() or self._stop.is_set():
+            return
+
         now = time.monotonic()
         next_state_change = now
         next_look_change = now
@@ -838,12 +851,21 @@ class MinecraftController:
         )
 
     async def _on_session_ready(self, bot) -> None:
+        # Register listeners immediately so early chat or kick messages are never missed
+        bot.on("player_chat", self._on_player_chat)
+        bot.on("system_chat", self._on_system_chat)
+        bot.on("world_ready", lambda world: self._schedule_login(bot))
+        bot.on("error", self._on_bot_error)
+        bot.on("close", self._on_bot_close)
+
         is_ours, aternos_status, _ = await self.discord.aternos.is_our_server_online()
         if not is_ours:
             await self._disconnect_foreign_world(bot, aternos_status)
             return
 
-        self._continuous_attempt = 0
+        if bot.closed.is_set():
+            return
+
         self.discord.aternos.known_banned = False
 
         log.info("Minecraft connected as %s.", bot.username)
@@ -851,14 +873,6 @@ class MinecraftController:
         await self.discord.log_to_discord(
             f"🟢 Minecraft connected as **{bot.username}**."
         )
-
-        bot.on("player_chat", self._on_player_chat)
-        bot.on("system_chat", self._on_system_chat)
-
-        bot.on("world_ready", lambda world: self._schedule_login(bot))
-
-        bot.on("error", self._on_bot_error)
-        bot.on("close", self._on_bot_close)
 
         if self._world_guard_task is not None and not self._world_guard_task.done():
             self._world_guard_task.cancel()
@@ -870,6 +884,9 @@ class MinecraftController:
             self._schedule_login(bot)
 
     def _schedule_login(self, bot) -> None:
+        if bot.closed.is_set():
+            return
+
         identity = id(bot)
 
         if identity in self._login_started:
@@ -887,12 +904,16 @@ class MinecraftController:
 
         try:
             is_ours, aternos_status, _ = await self.discord.aternos.is_our_server_online()
+            if bot.closed.is_set():
+                return
             if not is_ours:
                 await self._disconnect_foreign_world(bot, aternos_status)
                 return
 
-            command = f"/login {self.config.mc_password}"
+            if bot.closed.is_set():
+                return
 
+            command = f"/login {self.config.mc_password}"
             await bot.send_command(command)
 
             log.info("Sent EasyAuth login command.")
@@ -900,6 +921,8 @@ class MinecraftController:
             await asyncio.sleep(2.0)
 
             if not bot.closed.is_set():
+                # Only reset attempt counter once login succeeds and connection holds
+                self._continuous_attempt = 0
                 bot._mclogger_afk_enabled = True
 
                 log.info("Smart AFK enabled.")
@@ -908,7 +931,17 @@ class MinecraftController:
                     "🔐 Minecraft login command sent; Smart AFK enabled."
                 )
 
-        except Exception:
+        except Exception as exc:
+            # If the server reset/closed the socket during chunk load, exit quietly;
+            # _on_disconnected already logs the disconnect and triggers the retry.
+            if bot.closed.is_set() or "not open" in str(exc).lower() or isinstance(
+                exc, (ConnectionResetError, ConnectionAbortedError, BrokenPipeError)
+            ):
+                log.info(
+                    "Connection closed before EasyAuth login completed; waiting for reconnect."
+                )
+                return
+
             log.exception(
                 "Minecraft login / Smart AFK startup failed."
             )
