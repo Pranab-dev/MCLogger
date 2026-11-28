@@ -8,6 +8,7 @@ import math
 import os
 import random
 import re
+import struct
 import time
 import urllib.request
 from collections.abc import Mapping
@@ -348,6 +349,193 @@ except Exception:
     _MOVEMENT_PARAMS = {"forward"}
 
 
+def _encode_varint(value: int) -> bytes:
+    buf = bytearray()
+    val = value & 0xFFFFFFFF
+    while True:
+        byte = val & 0x7F
+        val >>= 7
+        if val != 0:
+            buf.append(byte | 0x80)
+        else:
+            buf.append(byte)
+            break
+    return bytes(buf)
+
+
+def _encode_mc_string(text: str) -> bytes:
+    raw = text.encode("utf-8")
+    return _encode_varint(len(raw)) + raw
+
+
+class VanillaClientEmulator:
+    """
+    Emulates real Minecraft Java client protocol packets & hardware input behavior:
+    - Sends `minecraft:client_tick_end` at the end of every 50ms physics tick (required by 1.21.2+ / 26.3)
+    - Sends `minecraft:player_loaded` once world chunks finish loading (1.21.4+ / 26.3)
+    - Sends `minecraft:brand` ("vanilla") and `client_information` (skin layers 0x7F, view distance, locale)
+    - Quantizes all yaw/pitch rotations to real Minecraft mouse sensitivity GCD steps
+    """
+
+    def __init__(self, version_str: str) -> None:
+        self.version_str = version_str.strip()
+        # Pick a realistic vanilla mouse sensitivity (e.g., 85% - 115% -> 0.425 to 0.575)
+        sens = random.uniform(0.425, 0.575)
+        f = 0.6 * sens + 0.2
+        self.mouse_gcd: float = (f * f * f) * 8.0 * 0.15
+
+        self._resolved: bool = False
+        self._tick_end_id: int | None = None
+        self._player_loaded_id: int | None = None
+        self._client_info_id: int | None = None
+        self._custom_payload_id: int | None = None
+        self._tick_end_disabled: bool = False
+
+    def quantize_rotation(
+        self,
+        cur_yaw: float,
+        cur_pitch: float,
+        raw_delta_yaw: float,
+        raw_delta_pitch: float,
+    ) -> tuple[float, float]:
+        """Snap rotation deltas to exact vanilla mouse sensitivity GCD steps."""
+        gcd = self.mouse_gcd
+        if gcd <= 0:
+            return (cur_yaw + raw_delta_yaw) % 360.0, max(
+                -85.0, min(85.0, cur_pitch + raw_delta_pitch)
+            )
+
+        steps_yaw = round(raw_delta_yaw / gcd)
+        steps_pitch = round(raw_delta_pitch / gcd)
+
+        new_yaw = (cur_yaw + steps_yaw * gcd) % 360.0
+        new_pitch = max(-85.0, min(85.0, cur_pitch + steps_pitch * gcd))
+        return new_yaw, new_pitch
+
+    def _resolve_packet_ids(self, bot: Any) -> None:
+        if self._resolved:
+            return
+        self._resolved = True
+
+        version_obj = getattr(bot, "version", None)
+        packets = getattr(version_obj, "packets", None)
+
+        def _find_pkt(*names: str) -> int | None:
+            if packets is None:
+                return None
+            for name in names:
+                val = getattr(packets, name, None)
+                if isinstance(val, int):
+                    return val
+            return None
+
+        self._tick_end_id = _find_pkt(
+            "serverbound_client_tick_end",
+            "client_tick_end",
+            "serverbound_tick_end",
+        )
+        self._player_loaded_id = _find_pkt(
+            "serverbound_player_loaded",
+            "player_loaded",
+        )
+        self._client_info_id = _find_pkt(
+            "serverbound_client_information",
+            "client_information",
+            "serverbound_client_settings",
+            "client_settings",
+        )
+        self._custom_payload_id = _find_pkt(
+            "serverbound_custom_payload",
+            "custom_payload",
+            "serverbound_plugin_message",
+        )
+
+        # Minecraft 26.x (protocol 775) fallback IDs if protobot's packet table omits them
+        if self.version_str.startswith("26."):
+            if self._tick_end_id is None:
+                self._tick_end_id = 0x0E
+            if self._player_loaded_id is None:
+                self._player_loaded_id = 0x2D
+
+    async def send_join_handshake(self, bot: Any) -> None:
+        """Send vanilla brand, client settings, and player_loaded when chunks finish loading."""
+        if bot.closed.is_set() or not hasattr(bot, "send_raw"):
+            return
+
+        self._resolve_packet_ids(bot)
+        sent_features: list[str] = []
+
+        try:
+            # 1. minecraft:brand = "vanilla"
+            if self._custom_payload_id is not None:
+                brand_payload = _encode_mc_string("minecraft:brand") + _encode_mc_string(
+                    "vanilla"
+                )
+                await bot.send_raw(self._custom_payload_id, brand_payload)
+                sent_features.append("minecraft:brand")
+
+            # 2. client_information (en_US, view=10, chat=enabled, colors=true, all skin layers=0x7F, right hand=1)
+            if self._client_info_id is not None:
+                info_payload = (
+                    _encode_mc_string("en_US")
+                    + struct.pack("b", 10)  # view distance
+                    + _encode_varint(0)  # chat mode: enabled
+                    + b"\x01"  # chat colors: true
+                    + struct.pack("B", 0x7F)  # displayed skin parts: all layers
+                    + _encode_varint(1)  # main hand: right
+                    + b"\x00"  # enable text filtering: false
+                    + b"\x01"  # allow server listings: true
+                    + _encode_varint(0)  # particle status: all
+                )
+                await bot.send_raw(self._client_info_id, info_payload)
+                sent_features.append("client_information")
+
+            # 3. player_loaded (tells 1.21.4+ / 26.3 server terrain loading screen closed)
+            if self._player_loaded_id is not None:
+                await bot.send_raw(self._player_loaded_id, b"")
+                sent_features.append("player_loaded")
+
+            if self._tick_end_id is not None:
+                sent_features.append(f"client_tick_end(0x{self._tick_end_id:02x})")
+
+            if sent_features:
+                log.info(
+                    "Vanilla client emulation active: %s (mouse GCD=%.4f°).",
+                    ", ".join(sent_features),
+                    self.mouse_gcd,
+                )
+        except Exception:
+            log.debug("Optional vanilla join packet skipped.", exc_info=True)
+
+    async def send_tick_end(self, bot: Any) -> None:
+        """Emit `minecraft:client_tick_end` at the end of a 50ms client physics tick."""
+        if (
+            self._tick_end_disabled
+            or bot.closed.is_set()
+            or not hasattr(bot, "send_raw")
+        ):
+            return
+
+        self._resolve_packet_ids(bot)
+        if self._tick_end_id is None:
+            return
+
+        # If protobot already has a native tick_end method, use it
+        native_fn = getattr(bot, "send_client_tick_end", None) or getattr(
+            bot, "send_tick_end", None
+        )
+        try:
+            if callable(native_fn):
+                res = native_fn()
+                if inspect.isawaitable(res):
+                    await res
+            else:
+                await bot.send_raw(self._tick_end_id, b"")
+        except Exception:
+            if not bot.closed.is_set():
+                self._tick_end_disabled = True
+
+
 def _build_movement_input(
     forward: float = 0.0,
     strafe: float = 0.0,
@@ -482,10 +670,15 @@ def render_chat_component(component: Any) -> str:
 
 class SmartAFKSession(BotSession):
     """
-    Human-like Smart AFK tailored for a 5x3 bedrock enclosure.
-    Mixes short walks, strafes, jumps, sneaks, smooth head turns,
-    and occasional arm swings / hotbar shifts while turning away from walls.
+    Vanilla-emulated Smart AFK session tailored for a 5x3 bedrock enclosure:
+    - Emits `client_tick_end` at the end of every 50ms physics tick
+    - Quantizes all yaw/pitch changes to real Minecraft mouse sensitivity GCD steps
+    - Mixes natural pauses, short walks, strafes, jumps, sneaks, and arm swings
     """
+
+    def __init__(self, config: SessionConfig, credentials, mc_version: str = "26.3"):
+        super().__init__(config, credentials=credentials)
+        self.emulator = VanillaClientEmulator(mc_version)
 
     async def _maybe_player_gesture(self, bot) -> None:
         """Perform a subtle player gesture (arm swing or hotbar change) if supported."""
@@ -512,7 +705,7 @@ class SmartAFKSession(BotSession):
             pass
 
     async def _tick_loop(self, bot) -> None:
-        log.info("Minecraft human-like Smart AFK tick loop started.")
+        log.info("Minecraft vanilla-emulated Smart AFK tick loop started.")
 
         # Wait until world chunks are loaded before sending movement/physics ticks
         world_event = getattr(bot, "world_ready", None)
@@ -553,16 +746,16 @@ class SmartAFKSession(BotSession):
             if afk_enabled:
                 if now >= next_state_change:
                     choice = random.random()
-                    if choice < 0.25:
+                    if choice < 0.28:
                         forward, strafe, sneak, sprint = 0.0, 0.0, False, False
-                        next_state_change = now + random.uniform(1.2, 4.0)
-                    elif choice < 0.58:
+                        next_state_change = now + random.uniform(1.4, 4.5)
+                    elif choice < 0.60:
                         forward = 1.0
                         strafe = random.choice((0.0, 0.0, -0.5, 0.5))
                         sneak = False
-                        sprint = random.random() < 0.25
+                        sprint = random.random() < 0.22
                         next_state_change = now + random.uniform(1.0, 2.8)
-                    elif choice < 0.75:
+                    elif choice < 0.76:
                         forward = random.choice((-1.0, 0.0))
                         strafe = random.choice((-1.0, 1.0)) if forward == 0.0 else 0.0
                         sneak = False
@@ -582,7 +775,7 @@ class SmartAFKSession(BotSession):
                         jump_until = now + random.uniform(0.25, 0.55)
                         next_state_change = now + random.uniform(1.0, 2.2)
 
-                    if random.random() < 0.22:
+                    if random.random() < 0.20:
                         jump_until = max(jump_until, now + random.uniform(0.15, 0.35))
 
                 jump = now < jump_until
@@ -601,21 +794,25 @@ class SmartAFKSession(BotSession):
                         pitch_diff = target_pitch - cur_pitch
 
                         if abs(yaw_diff) > 1.2 or abs(pitch_diff) > 1.2:
-                            step_yaw = (
-                                cur_yaw
-                                + max(-16.0, min(16.0, yaw_diff * 0.32))
-                                + random.uniform(-0.4, 0.4)
-                            ) % 360.0
-                            step_pitch = max(
-                                -85.0,
-                                min(
-                                    85.0,
-                                    cur_pitch
-                                    + max(-9.0, min(9.0, pitch_diff * 0.32))
-                                    + random.uniform(-0.25, 0.25),
-                                ),
+                            raw_dyaw = max(-16.0, min(16.0, yaw_diff * 0.32)) + random.uniform(
+                                -0.35, 0.35
                             )
-                            await bot.send_look(step_yaw, step_pitch)
+                            raw_dpitch = max(
+                                -9.0, min(9.0, pitch_diff * 0.32)
+                            ) + random.uniform(-0.2, 0.2)
+
+                            # Quantize to real Minecraft mouse sensitivity GCD steps
+                            step_yaw, step_pitch = self.emulator.quantize_rotation(
+                                cur_yaw,
+                                cur_pitch,
+                                raw_dyaw,
+                                raw_dpitch,
+                            )
+                            if (
+                                abs(step_yaw - cur_yaw) > 1e-4
+                                or abs(step_pitch - cur_pitch) > 1e-4
+                            ):
+                                await bot.send_look(step_yaw, step_pitch)
                 except Exception:
                     log.debug("Smart AFK look interpolation skipped.", exc_info=True)
 
@@ -661,6 +858,7 @@ class SmartAFKSession(BotSession):
                                 sprint=sprint,
                             )
                         )
+                        await self.emulator.send_tick_end(bot)
                 except Exception:
                     if bot.closed.is_set() or self._stop.is_set():
                         break
@@ -669,11 +867,14 @@ class SmartAFKSession(BotSession):
                 try:
                     if not bot.closed.is_set():
                         await bot.tick(_build_movement_input())
+                        await self.emulator.send_tick_end(bot)
                 except Exception:
                     if bot.closed.is_set() or self._stop.is_set():
                         break
 
-            await asyncio.sleep(self._tick_interval)
+            # Natural 1-3ms network jitter around the 50ms (20 TPS) vanilla tick clock
+            jitter = random.uniform(-0.0015, 0.0025)
+            await asyncio.sleep(max(0.03, self._tick_interval + jitter))
 
         if self._stop.is_set():
             log.info("Minecraft session is stopping.")
@@ -725,6 +926,7 @@ class MinecraftController:
         session = SmartAFKSession(
             session_config,
             credentials=offline_credentials,
+            mc_version=self.config.mc_version,
         )
 
         session.events.on(
@@ -913,6 +1115,15 @@ class MinecraftController:
             if bot.closed.is_set():
                 return
 
+            # Send vanilla brand, client settings, and player_loaded packet on terrain load
+            if self.session is not None:
+                await self.session.emulator.send_join_handshake(bot)
+
+            # Small natural reaction delay (0.4s - 0.9s) before typing /login
+            await asyncio.sleep(random.uniform(0.4, 0.9))
+            if bot.closed.is_set():
+                return
+
             command = f"/login {self.config.mc_password}"
             await bot.send_command(command)
 
@@ -921,7 +1132,6 @@ class MinecraftController:
             await asyncio.sleep(2.0)
 
             if not bot.closed.is_set():
-                # Only reset attempt counter once login succeeds and connection holds
                 self._continuous_attempt = 0
                 bot._mclogger_afk_enabled = True
 
@@ -932,8 +1142,6 @@ class MinecraftController:
                 )
 
         except Exception as exc:
-            # If the server reset/closed the socket during chunk load, exit quietly;
-            # _on_disconnected already logs the disconnect and triggers the retry.
             if bot.closed.is_set() or "not open" in str(exc).lower() or isinstance(
                 exc, (ConnectionResetError, ConnectionAbortedError, BrokenPipeError)
             ):
