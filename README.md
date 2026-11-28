@@ -1,83 +1,119 @@
-# MC Logger — Python rewrite
+# MCLogger
 
-Python Discord ↔ Minecraft bridge using `discord.py` and ProtoBot 1.2.7.
+24/7 Discord ↔ Minecraft bridge, vanilla-emulated Smart AFK companion, and Aternos server manager built with `discord.py`, `ProtoBot`, and pure-Python dependencies for Python 3.13+.
 
-## Included
+- **Developer:** `@thepixelriftx`
+- **Repository:** https://github.com/Pranab-dev/MCLogger
 
-- Discord slash commands: `/ping`, `/status`, `/help`
-- Discord chat channel → Minecraft chat (200-character input cap)
-- Minecraft player chat → Discord
-- Minecraft system chat and action-bar messages → Discord event-log channel
-- Player join/leave and death logs → Discord event-log channel
-- Connection, protocol error, disconnect, and reconnect logs → Discord event-log channel
-- Persistent local logs in `logs/mclogger.log`, rotated daily with 30 days of history
-- Discord-originated Minecraft messages are also recorded locally
-- Offline-mode Minecraft login as `MCLogger`
-- Sends `/login MC_PASSWORD` after the first world chunk
-- Waits 2 seconds after sending the login command, then enables Smart AFK
-- Smart AFK alternates forward/back every 4 minutes; checks movement every second and turns 90° after being stuck for 3 seconds
-- Discord remains independent of the Minecraft reconnect loop
-- Minecraft reconnect delay: 30 seconds
+---
 
-## Setup (Windows CMD)
+## Features
 
-1. Extract the ZIP.
-2. Open CMD in the extracted `MCLogger` folder.
-3. Create your environment file:
+### Discord Integration & Slash Commands
+- **Permanent Bot Presence:** Keeps Discord status locked to **Playing Nexus SMP!** across startups and Gateway resumes.
+- **Slash Commands:**
+  - `/ping` — Check Discord bot latency and responsiveness.
+  - `/status` — View Discord connection state, Minecraft bot status, live Aternos server state, and `MCLogger` ban status.
+  - `/start` — Send a start signal to the Aternos server using a persisted session cookie.
+  - `/unban` — Check Aternos's banned-players list (works whether the server is online or offline) and unban **only** `MCLogger`.
+  - `/restart` — Restart the MCLogger backend in-place (via Silly Development / Pterodactyl Panel API if configured, or `os.execv` process re-execution without stopping the container).
+  - `/about` — Display project details, developer credit, and repository link.
+  - `/help` — Show all available commands and usage instructions.
+- **Interaction Timeout Safety:** Automatic fallback to channel replies if container CPU load delays a slash command response past Discord's 3-second window.
 
-   ```cmd
-   copy .env.example .env
-   ```
+### Two-Way Chat & Event Bridge
+- **Discord → Minecraft:** Relays messages from `MINECRAFT_CHANNEL_ID` in-game as `[Discord] DisplayName: message` (200-character input cap) and reacts with `⚠️` if delivery fails.
+- **Minecraft → Discord:** Relays player chat, whispers, system announcements, join/leave messages, advancements, and death messages to `MINECRAFT_CHANNEL_ID`.
+- **Full Translation Resolution:** Automatically downloads official Minecraft `en_us.json` (8,700+ keys) on first boot with a built-in fallback dictionary for join/leave, death, and command messages.
+- **Operational & Audit Logging:** Sends connection attempts, disconnects, random-world guard alerts, and slash command audit logs to `BOT_LOG_CHANNEL_ID`, and writes daily rotated local logs to `logs/mclogger.log` (30-day retention).
 
-4. Edit `.env` and fill in:
-   - `DISCORD_TOKEN`
-   - `MINECRAFT_CHANNEL_ID`
-   - `BOT_LOG_CHANNEL_ID`
-   - `MC_PASSWORD`
+### Vanilla Client Emulation & Smart AFK
+- **Protocol Emulation (Minecraft 26.3):**
+  - Emits `minecraft:client_tick_end` at the end of every 50 ms physics tick.
+  - Sends `minecraft:brand` (`vanilla`), `client_information` (locale `en_US`, view distance, full skin layers `0x7F`), and `minecraft:player_loaded` once chunks finish loading.
+  - Quantizes all yaw/pitch movements to exact vanilla mouse sensitivity GCD steps and adds 1–3 ms natural tick jitter.
+- **Human-Like Smart AFK:** Tailored for compact enclosures (such as a 5×3 bedrock box)—blends idle pauses, short walks, strafes, sneaks, jumps, smooth head turns, arm swings, hotbar slot switches, and automatic wall-stuck turnarounds.
+- **EasyAuth Login:** Waits for `world_ready`, verifies server identity, sends `/login <MC_PASSWORD>` after a short natural delay, and enables Smart AFK 2 seconds later.
 
-   Keep `.env` private. Never send the token or password to anyone.
+### Reliability & Guards
+- **Random-World Guard:** Verifies via Aternos that `nexusforever.aternos.me` is genuinely online before sending `/login` or accepting a connection (and re-checks every 60 seconds), immediately disconnecting if a stranger's server occupies the shared Aternos port.
+- **Continuous Reconnect Loop:** Retries every 30 seconds in 400-attempt cycles (`MC_RECONNECT_MAX_ATTEMPTS`) with automatic cycle resets and a DNS/network outage retry loop in `main.py` so temporary host network drops never crash the container.
 
-5. Install dependencies:
+---
 
-   ```cmd
-   python -m pip install -r requirements.txt
-   ```
+## Project Structure
 
-6. Start MC Logger:
+| File | Purpose |
+| :--- | :--- |
+| `main.py` | Entry point, daily log rotation, DNS/network retry loop, and in-place `os.execv` restart handler. |
+| `config.py` | Loads and validates `.env` configuration variables. |
+| `discord_bot.py` | `discord.py` client, slash commands, chat relay, presence manager, and Pterodactyl restart support. |
+| `minecraft.py` | `ProtoBot` session controller, vanilla packet emulator, Smart AFK loop, translation renderer, and random-world guard. |
+| `aternos_manager.py` | Pure-Python 3.13 Aternos session client for `/start`, `/unban`, `/status`, and server online verification. |
+| `requirements.txt` | Pure-Python package dependencies (no C compiler headers required). |
 
-   ```cmd
-   python main.py
-   ```
+---
 
-## Discord setup
+## Setup
 
-In the Discord Developer Portal, enable the **Message Content Intent** for the bot.
-Invite it with the `bot` and `applications.commands` scopes. It needs permission to:
-- View channels
-- Send messages
-- Read message history
-- Use application commands
+### 1. Create `.env`
 
-The bot needs access to both configured channels. `MINECRAFT_CHANNEL_ID` is where player chat is bridged. `BOT_LOG_CHANNEL_ID` receives system messages, action-bar messages, join/leave/death events, and connection events. Local logs are written under `logs/` beside `main.py`.
+Create a `.env` file in the root directory beside `main.py`:
 
-## Minecraft configuration
+```env
+# Required Discord & Minecraft settings
+DISCORD_TOKEN=your_discord_bot_token
+MINECRAFT_CHANNEL_ID=123456789012345678
+BOT_LOG_CHANNEL_ID=123456789012345678
 
-Defaults:
-- Host: `nexusforever.aternos.me`
-- Port: `15629`
-- Version: `26.3`
-- Username: `MCLogger`
-- Login mode: offline/cracked
-- Reconnect delay: 30 seconds
+MC_HOST=nexusforever.aternos.me
+MC_PORT=15629
+MC_VERSION=26.3
+MC_USERNAME=MCLogger
+MC_PASSWORD=your_easyauth_password
+MC_RECONNECT_DELAY=30
+MC_RECONNECT_MAX_ATTEMPTS=400
 
-The server must permit offline-mode connections and the EasyAuth `/login` command. ProtoBot's `world_ready` event is emitted when the first world chunk is loaded.
+# Optional: Aternos browser session cookie for /start, /unban, /status, and Random-World Guard
+ATERNOS_SESSION=your_aternos_session_cookie
+ATERNOS_TOKEN=
 
-## Logging coverage
+# Optional: Silly Development (Pterodactyl) Panel API for container-level /restart
+PANEL_URL=[https://panel.sillydev.co.uk](https://panel.sillydev.co.uk)
+PANEL_API_KEY=
+PANEL_SERVER_ID=
+```
 
-The logger records every message/event exposed through the ProtoBot event API currently used by this project: `player_chat`, `system_chat`, `player_join`, `player_leave`, and `death`, plus connection/session events. Some server activity is not delivered to a client as chat (for example, private plugin internals or commands typed by other players); those cannot be guaranteed by a client-side bot. Action-bar/system overlays are included and may be frequent on some servers.
+> **Note:** Keep `.env` and `.aternos_session` private. Never commit tokens, cookies, or passwords to GitHub.
 
-## Notes
+### 2. Install Dependencies & Run
 
-- The password and Discord token belong only in `.env`.
-- If the server's chat policy or plugin changes, check the console and Discord log channel for the exact error.
-- Smart AFK uses ProtoBot's physics tick loop rather than launching a second competing movement loop.
+All dependencies in `requirements.txt` are pure Python and install cleanly on Python 3.13+ without `gcc`, `libxml2`, or `libxslt`:
+
+```bash
+python -m pip install -r requirements.txt
+python main.py
+```
+
+*(On Silly Development / Pterodactyl containers, upload the files to `/home/container/`, set `main.py` as your startup file, and start the server.)*
+
+---
+
+## Discord Bot Setup
+
+1. Open the **Discord Developer Portal** → select your application → **Bot**:
+   - Enable **Message Content Intent** under *Privileged Gateway Intents*.
+   - Turn **Public Bot** off if you want to keep your bot instance private.
+2. Go to **OAuth2 → URL Generator**:
+   - **Scopes:** `bot`, `applications.commands`
+   - **Bot Permissions:** `View Channels`, `Send Messages`, `Send Messages in Threads`, `Read Message History`, `Add Reactions`
+3. Invite the bot using the generated URL and ensure the `MCLogger` role has explicit channel permissions on both `MINECRAFT_CHANNEL_ID` and `BOT_LOG_CHANNEL_ID`.
+
+---
+
+## Obtaining `ATERNOS_SESSION`
+
+1. Log into https://aternos.org/servers/ in a browser with Developer Tools (Desktop Chrome/Edge, or **Mises / Kiwi Browser** on Android).
+2. Open **Developer Tools → Application (or Storage) → Cookies → `https://aternos.org`**.
+3. Copy the value of **`ATERNOS_SESSION`** and paste it into `.env` without quotes.
+4. Close the browser tab without clicking **Log out** inside Aternos (clicking Log out invalidates the session cookie). Note that free Aternos accounts hosted behind datacenter IPs may still encounter Cloudflare `503` challenges on automated AJAX requests; when that happens, start or unban directly in your browser and MCLogger will connect automatically.
